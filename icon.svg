@@ -1,0 +1,16 @@
+<svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <rect width="180" height="180" rx="40" fill="#FFE9F0"/>
+  <path d="M50 70 L40 34 L76 52 Z" fill="#F9A94B"/>
+  <path d="M130 70 L140 34 L104 52 Z" fill="#F9A94B"/>
+  <path d="M54 64 L48 42 L68 52 Z" fill="#FFC9D4"/>
+  <path d="M126 64 L132 42 L112 52 Z" fill="#FFC9D4"/>
+  <circle cx="90" cy="96" r="52" fill="#F9A94B"/>
+  <path d="M66 62 q6 14 0 24 M90 58 q3 14 0 26 M114 62 q-6 14 0 24" stroke="#E07B2A" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <ellipse cx="70" cy="96" rx="10" ry="12" fill="#3A3344"/>
+  <ellipse cx="110" cy="96" rx="10" ry="12" fill="#3A3344"/>
+  <circle cx="73" cy="92" r="3" fill="#fff"/>
+  <circle cx="113" cy="92" r="3" fill="#fff"/>
+  <path d="M90 108 L85 114 Q90 118 95 114 Z" fill="#E8798F"/>
+  <path d="M90 116 q0 5 -8 7 M90 116 q0 5 8 7" stroke="#5A4A42" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <text x="90" y="168" font-size="26" font-weight="800" text-anchor="middle" fill="#D96A87" font-family="Hiragino Maru Gothic ProN, sans-serif">あ→ア</text>
+</svg>

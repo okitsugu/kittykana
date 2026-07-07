@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>KittyKana 🐱 にほんご</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="KittyKana">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ambient walking cats layer -->
+<div id="catWalkLayer"></div>
+<!-- confetti / sakura layer -->
+<div id="fxLayer"></div>
+
+<!-- ═══ HEADER ═══ -->
+<header id="topbar">
+  <button class="statchip" id="homeBtn" aria-label="Home">🏠</button>
+  <div id="appTitle"><span class="t1">Kitty</span><span class="t2">Kana</span><span class="tj">ねこの にほんご</span></div>
+  <div id="stats">
+    <button class="statchip" id="chipProfile" title="Switch player">🐱 <b id="statName">…</b></button>
+    <div class="statchip" id="chipLevel" title="Level">⭐ <b id="statLevel">1</b></div>
+    <div class="statchip" id="chipFish" title="Fish treats">🐟 <b id="statFish">0</b></div>
+    <div class="statchip" id="chipStreak" title="Daily streak">🔥 <b id="statStreak">0</b></div>
+  </div>
+</header>
+
+<main id="screens">
+
+  <!-- ═══ HOME ═══ -->
+  <section class="screen active" id="screen-home">
+    <div class="home-hero card">
+      <div id="homeCat" class="home-cat"></div>
+      <div class="home-hello">
+        <div class="bubble" id="catBubble">こんにちは！<span class="bubble-sub">konnichiwa — hello!</span></div>
+        <div id="homeCatName" class="home-catname"></div>
+      </div>
+    </div>
+
+    <button class="bigcard challenge-card" id="dailyBtn">
+      <div class="bigcard-emoji">🌟</div>
+      <div class="bigcard-txt">
+        <div class="bigcard-title">Daily Challenge <span class="jp-mini">きょうの ちょうせん</span></div>
+        <div class="bigcard-sub" id="dailySub">15 new words are waiting!</div>
+      </div>
+      <div class="bigcard-arrow">▶</div>
+    </button>
+
+    <div class="home-grid">
+      <button class="bigcard" data-nav="hiragana"><div class="bigcard-emoji">あ</div><div class="bigcard-txt"><div class="bigcard-title">Hiragana</div><div class="bigcard-sub" id="subHira"></div></div></button>
+      <button class="bigcard" data-nav="katakana"><div class="bigcard-emoji">ア</div><div class="bigcard-txt"><div class="bigcard-title">Katakana</div><div class="bigcard-sub" id="subKata"></div></div></button>
+      <button class="bigcard" data-nav="words"><div class="bigcard-emoji">🗣️</div><div class="bigcard-txt"><div class="bigcard-title">Words</div><div class="bigcard-sub" id="subWords"></div></div></button>
+      <button class="bigcard" data-nav="kanji" id="kanjiCard"><div class="bigcard-emoji">日</div><div class="bigcard-txt"><div class="bigcard-title">Kanji</div><div class="bigcard-sub" id="subKanji"></div></div></button>
+      <button class="bigcard" data-nav="collection"><div class="bigcard-emoji">🐱</div><div class="bigcard-txt"><div class="bigcard-title">My Cats</div><div class="bigcard-sub" id="subCats"></div></div></button>
+      <button class="bigcard" data-nav="shop"><div class="bigcard-emoji">🛍️</div><div class="bigcard-txt"><div class="bigcard-title">Cat Shop</div><div class="bigcard-sub">Spend your fish!</div></div></button>
+    </div>
+  </section>
+
+  <!-- ═══ UNIT LIST (hiragana / katakana / words / kanji) ═══ -->
+  <section class="screen" id="screen-units">
+    <h2 id="unitsTitle"></h2>
+    <p class="units-blurb" id="unitsBlurb"></p>
+    <div id="unitsList" class="units-list"></div>
+  </section>
+
+  <!-- ═══ LESSON (flashcards) ═══ -->
+  <section class="screen" id="screen-lesson">
+    <div class="lesson-top">
+      <button class="pill-btn" id="lessonBack">← Back</button>
+      <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" id="lessonProg"></div><div class="progress-cat" id="lessonProgCat"></div></div></div>
+    </div>
+    <div id="lessonCard" class="lesson-card card"></div>
+    <div class="lesson-nav">
+      <button class="pill-btn" id="lessonPrev">← Previous</button>
+      <button class="pill-btn primary" id="lessonNext">Next →</button>
+    </div>
+  </section>
+
+  <!-- ═══ QUIZ ═══ -->
+  <section class="screen" id="screen-quiz">
+    <div class="lesson-top">
+      <button class="pill-btn" id="quizQuit">✕</button>
+      <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" id="quizProg"></div><div class="progress-cat" id="quizProgCat"></div></div></div>
+      <div class="quiz-score" id="quizScore">⭐ 0</div>
+    </div>
+    <div id="quizQ" class="quiz-q card"></div>
+    <div id="quizChoices" class="quiz-choices"></div>
+    <div id="quizFeedback" class="quiz-feedback"></div>
+  </section>
+
+  <!-- ═══ RESULTS ═══ -->
+  <section class="screen" id="screen-results">
+    <div class="results card" id="resultsBox"></div>
+  </section>
+
+  <!-- ═══ COLLECTION ═══ -->
+  <section class="screen" id="screen-collection">
+    <h2>My Cats <span class="jp-mini">わたしの ねこ</span></h2>
+    <div class="stage card" id="catStage">
+      <div id="stageCat"></div>
+      <div class="stage-name" id="stageName"></div>
+      <div class="stage-moves" id="stageMoves"></div>
+    </div>
+    <h3>Cats</h3><div class="coll-grid" id="collCats"></div>
+    <h3>Outfits</h3><div class="coll-grid small" id="collOutfits"></div>
+  </section>
+
+  <!-- ═══ SHOP ═══ -->
+  <section class="screen" id="screen-shop">
+    <h2>Cat Shop <span class="jp-mini">ねこの おみせ</span></h2>
+    <p class="units-blurb">Earn 🐟 fish by learning, then treat your cat to something cute!</p>
+    <div class="coll-grid small" id="shopGrid"></div>
+  </section>
+
+</main>
+
+<!-- reward popup -->
+<div id="popup" class="popup hidden"><div class="popup-inner card" id="popupInner"></div></div>
+
+<!-- profile picker overlay -->
+<div id="profileOverlay" class="profile-overlay hidden"><div class="profile-box card" id="profileBox"></div></div>
+
+<script src="js/kana.js"></script>
+<script src="js/vocab.js"></script>
+<script src="js/kanji.js"></script>
+<script src="js/cats.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

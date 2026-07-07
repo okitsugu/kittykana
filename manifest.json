@@ -1,0 +1,14 @@
+{
+  "name": "KittyKana — ねこの にほんご",
+  "short_name": "KittyKana",
+  "description": "Learn Japanese with cats! Hiragana, katakana, kanji and words.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FFF6EA",
+  "theme_color": "#FFB6C9",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
