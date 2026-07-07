@@ -61,10 +61,26 @@ const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.f
 const pick = a => a[Math.floor(Math.random()*a.length)];
 
 // ── Audio: Japanese TTS ─────────────────────────────────────────────
+// Apple ships joke/character voices (Grandma, Eddy, Boing…) for every
+// language — never use or offer them for learning.
+const NOVELTY_VOICE = /albert|bad news|bahh|bells|boing|bubbles|cellos|eddy|flo\b|fred|good news|grandma|grandpa|jester|junior|kathy|organ|ralph|reed|rocko|sandy|shelley|superstar|trinoids|whisper|wobble|zarvox/i;
+function voiceScore(v){
+  let s = 0;
+  if (/premium/i.test(v.name)) s += 4;
+  if (/enhanced|拡張/i.test(v.name)) s += 3;
+  if (/kyoko/i.test(v.name)) s += 2;
+  if (/siri/i.test(v.name)) s += 1;
+  return s;
+}
+function jaVoicesRanked(){
+  return speechSynthesis.getVoices()
+    .filter(v=>v.lang && v.lang.startsWith("ja") && !NOVELTY_VOICE.test(v.name))
+    .sort((a,b)=>voiceScore(b)-voiceScore(a));
+}
 let jpVoice = null;
 function findVoice(){
-  const vs = speechSynthesis.getVoices();
-  jpVoice = vs.find(v=>/kyoko/i.test(v.name)) || vs.find(v=>v.lang && v.lang.startsWith("ja")) || null;
+  const ranked = jaVoicesRanked();
+  jpVoice = ranked[0] || speechSynthesis.getVoices().find(v=>v.lang && v.lang.startsWith("ja")) || null;
 }
 if ("speechSynthesis" in window){
   findVoice();
@@ -75,9 +91,10 @@ function speak(text, rate){
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   const pref = localStorage.getItem("kittykana_voice");
-  const prefV = pref && speechSynthesis.getVoices().find(v=>v.name===pref);
+  if (pref && NOVELTY_VOICE.test(pref)) localStorage.removeItem("kittykana_voice"); // clear bad saved picks
+  const prefV = pref && !NOVELTY_VOICE.test(pref) && speechSynthesis.getVoices().find(v=>v.name===pref);
   if (prefV) u.voice = prefV;
-  else { if (!jpVoice) findVoice(); if (jpVoice) u.voice = jpVoice; }
+  else { findVoice(); if (jpVoice) u.voice = jpVoice; }
   u.lang = "ja-JP";
   u.rate = (rate || 0.8) * (localStorage.getItem("kittykana_speed")==="slow" ? 0.8 : 1);
   u.pitch = 1.0;
@@ -85,14 +102,15 @@ function speak(text, rate){
 }
 // voice settings popup (device-level, shared by all profiles)
 function showVoiceSettings(){
-  const jaVoices = speechSynthesis.getVoices().filter(v=>v.lang && v.lang.startsWith("ja"));
+  const jaVoices = jaVoicesRanked();
   const cur = localStorage.getItem("kittykana_voice");
   const speed = localStorage.getItem("kittykana_speed")||"normal";
-  let html = '<div class="p-title">🔊 Voice</div><div class="p-body">Pick the Japanese voice and speed.</div>';
+  let html = '<div class="p-title">🔊 Voice</div><div class="p-body">Pick the Japanese voice and speed.<br><span class="jp-mini">Tip: download "Kyoko (Enhanced)" in Settings → Accessibility → Spoken Content → Voices → Japanese for the nicest sound!</span></div>';
   if (!jaVoices.length) html += '<div class="p-body">No Japanese voice found on this device yet — words will still play once one is installed (Settings → Accessibility → Spoken Content → Voices → Japanese).</div>';
-  jaVoices.forEach(v=>{
-    html += '<button class="voice-row'+((cur ? cur===v.name : /kyoko/i.test(v.name))?' selected':'')+'" data-voice="'+v.name+'">'
-      + '🗣️ '+v.name+'<span class="tag">'+v.lang+(/premium|enhanced/i.test(v.name)?' ✨':'')+'</span></button>';
+  jaVoices.forEach((v,i)=>{
+    const sel = cur && !NOVELTY_VOICE.test(cur) ? cur===v.name : i===0;
+    html += '<button class="voice-row'+(sel?' selected':'')+'" data-voice="'+v.name+'">'
+      + '🗣️ '+v.name+'<span class="tag">'+(i===0?'✨ best · ':'')+v.lang+'</span></button>';
   });
   html += '<div class="p-body" style="margin-top:8px">Speed</div>'
     + '<button class="voice-row'+(speed==="normal"?' selected':'')+'" data-speed="normal">🐇 Normal</button>'
@@ -126,19 +144,36 @@ const KANA_AUDIO = (()=>{
   [...hira].forEach((ch,i)=>{ m[ch] = syll[i]; m[kata[i]] = syll[i]; });
   return m;
 })();
-const clipCache = {};
+// Kana clips play through WebAudio buffers: unlike <audio> elements, a
+// decoded buffer can play outside a tap gesture on iPad once the
+// AudioContext is unlocked, so clips never silently fall back to TTS.
+const clipBuffers = {};
+function playClip(syll, onFail){
+  const c = ac();
+  if (!c){ onFail(); return; }
+  if (c.state === "suspended") c.resume();
+  const play = buf => {
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.connect(c.destination);
+    src.start();
+  };
+  const cached = clipBuffers[syll];
+  if (cached === "error"){ onFail(); return; }
+  if (cached){ play(cached); return; }
+  fetch("audio/kana/"+syll+".m4a")
+    .then(r=>{ if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(ab=>new Promise((res,rej)=>c.decodeAudioData(ab, res, rej)))
+    .then(buf=>{ clipBuffers[syll] = buf; play(buf); })
+    .catch(()=>{ clipBuffers[syll] = "error"; onFail(); });
+}
 // speak Japanese: real recording for single kana, TTS for everything else
 function speakJa(text, rate){
   const s = KANA_AUDIO[text];
   if (s){
-    try {
-      speechSynthesis.cancel();
-      let clip = clipCache[s];
-      if (!clip){ clip = clipCache[s] = new Audio("audio/kana/"+s+".m4a"); }
-      clip.currentTime = 0;
-      clip.play().catch(()=>speak(text, rate));
-      return;
-    } catch(e){ /* fall through to TTS */ }
+    speechSynthesis.cancel();
+    playClip(s, ()=>speak(text, rate));
+    return;
   }
   speak(text, rate);
 }

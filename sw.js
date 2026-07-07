@@ -1,5 +1,5 @@
 // KittyKana service worker — cache everything for offline use
-const CACHE = "kittykana-v5";
+const CACHE = "kittykana-v6";
 const KANA_CLIPS = ("a i u e o ka ki ku ke ko sa shi su se so ta chi tsu te to "
   + "na ni nu ne no ha hi hu he ho ma mi mu me mo ya yu yo "
   + "ra ri ru re ro wa wo n ga gi gu ge go za zi zu ze zo "
