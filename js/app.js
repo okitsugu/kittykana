@@ -13,8 +13,8 @@ const DEFAULTS = {
   xp:0, fish:0, streak:0, bestStreak:0,
   lastChallengeDay:null, challengesDone:0,
   unitStars:{}, totalStars:0,
-  activeCat:"mochi", activeOutfit:"none", activeMove:"idle",
-  boughtOutfits:[], seenUnlocks:["cat:mochi","outfit:none","move:idle"],
+  activeCat:"mochi", outfits:[], activeMove:"idle",
+  boughtOutfits:[], seenUnlocks:["cat:mochi","move:idle"],
 };
 // ── Profiles: each player gets their own save slot ──
 let REG;
@@ -37,6 +37,12 @@ let S = JSON.parse(JSON.stringify(DEFAULTS));
 function loadState(){
   S = JSON.parse(JSON.stringify(DEFAULTS));
   try { Object.assign(S, JSON.parse(localStorage.getItem("kittykana_"+REG.active)||"{}")); } catch(e){}
+  // migrate old single-outfit saves to the outfit-slots system
+  if (!Array.isArray(S.outfits)) S.outfits = [];
+  if (typeof S.activeOutfit === "string"){
+    if (S.activeOutfit !== "none" && !S.outfits.length) S.outfits = [S.activeOutfit];
+    delete S.activeOutfit;
+  }
 }
 function save(){ if (REG.active) localStorage.setItem("kittykana_"+REG.active, JSON.stringify(S)); }
 
@@ -63,9 +69,39 @@ function speak(text, rate){
   if (!jpVoice) findVoice();
   if (jpVoice) u.voice = jpVoice;
   u.lang = "ja-JP";
-  u.rate = rate || 0.75;
-  u.pitch = 1.1;
+  u.rate = rate || 0.8;
+  u.pitch = 1.0;
   speechSynthesis.speak(u);
+}
+
+// ── Real recorded kana audio (public-domain recordings, Wikimedia Commons) ──
+// map each kana character (hiragana + katakana) to its syllable clip name
+const KANA_AUDIO = (()=>{
+  const hira = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ";
+  const kata = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ";
+  const syll = ("a i u e o ka ki ku ke ko sa shi su se so ta chi tsu te to "
+    + "na ni nu ne no ha hi hu he ho ma mi mu me mo ya yu yo "
+    + "ra ri ru re ro wa wo n ga gi gu ge go za zi zu ze zo "
+    + "da di du de do ba bi bu be bo pa pi pu pe po").split(" ");
+  const m = {};
+  [...hira].forEach((ch,i)=>{ m[ch] = syll[i]; m[kata[i]] = syll[i]; });
+  return m;
+})();
+const clipCache = {};
+// speak Japanese: real recording for single kana, TTS for everything else
+function speakJa(text, rate){
+  const s = KANA_AUDIO[text];
+  if (s){
+    try {
+      speechSynthesis.cancel();
+      let clip = clipCache[s];
+      if (!clip){ clip = clipCache[s] = new Audio("audio/kana/"+s+".m4a"); }
+      clip.currentTime = 0;
+      clip.play().catch(()=>speak(text, rate));
+      return;
+    } catch(e){ /* fall through to TTS */ }
+  }
+  speak(text, rate);
 }
 
 // ── Sound effects (WebAudio) ────────────────────────────────────────
@@ -157,7 +193,7 @@ const GREETINGS = [
 ];
 function renderHome(){
   renderStats();
-  $("homeCat").innerHTML = catSVG(S.activeCat, S.activeOutfit, {size:170});
+  $("homeCat").innerHTML = catSVG(S.activeCat, S.outfits, {size:170});
   const breed = CAT_BREEDS.find(c=>c.id===S.activeCat);
   $("homeCatName").textContent = breed.name+" · "+breed.jp;
   const g = pick(GREETINGS);
@@ -229,9 +265,9 @@ function startLesson(u){
   renderCard();
 }
 function speakCard(c){
-  if (c.type==="kana") speak(c.ch, 0.7);
-  else if (c.type==="word") speak(c.kana, 0.75);
-  else speak(c.kana + "。" + c.ex[0], 0.75);
+  if (c.type==="kana") speakJa(c.ch, 0.7);
+  else if (c.type==="word") speak(c.kana, 0.8);
+  else speak(c.kana + "。" + c.ex[0], 0.8);
 }
 function renderCard(){
   const c = L.cards[L.idx];
@@ -336,8 +372,8 @@ function renderQuestion(){
     + (q.tapSay
        ? '<button class="sound-btn" id="qSound">🔊</button>'
        : '<div class="quiz-big '+(q.bigCls||"")+'">'+q.big+'</div><button class="sound-btn small" id="qSound">🔊</button>');
-  $("qSound").onclick = () => speak(q.say, 0.7);
-  if (!q.sayAfter) speak(q.say, 0.7);
+  $("qSound").onclick = () => speakJa(q.say, 0.7);
+  if (!q.sayAfter) speakJa(q.say, 0.7);
 
   const ch = $("quizChoices");
   ch.innerHTML = "";
@@ -363,7 +399,7 @@ function answer(btn, choice, q){
     Q.correct++;
     sfxGood();
     $("quizFeedback").textContent = pick(PRAISE);
-    if (q.sayAfter) speak(q.say, 0.75);
+    if (q.sayAfter) speakJa(q.say, 0.8);
   } else {
     btn.classList.add("wrong");
     sfxBad();
@@ -372,7 +408,7 @@ function answer(btn, choice, q){
     });
     $("quizFeedback").textContent = "Almost! The answer is: "+q.choices.find(c=>c.correct).label;
     $("quizFeedback").classList.add("bad");
-    speak(q.say, 0.7);
+    speakJa(q.say, 0.7);
   }
   $("quizScore").textContent = "⭐ "+Q.correct;
   setTimeout(()=>{
@@ -430,7 +466,7 @@ function finishQuiz(){
     + '<div class="r-stars">'+("⭐".repeat(stars)+"☆".repeat(Math.max(0,3-stars)))+'</div>'
     + lines.map(l=>'<div class="r-line">'+l+'</div>').join("")
     + '<div class="r-line">+'+fishGain+' 🐟 &nbsp; +'+xpGain+' XP</div>'
-    + '<div class="r-cat">'+catSVG(S.activeCat, S.activeOutfit, {size:150})+'</div>'
+    + '<div class="r-cat">'+catSVG(S.activeCat, S.outfits, {size:150})+'</div>'
     + '<button class="pill-btn primary big" id="resultsOk">'+(stars===0?"Try Again 💪":"Yay! つづける ▶")+'</button>';
   show("results");
   speak(stars>=2 ? "すごい！よくできました！" : stars===1 ? "よくできました" : "がんばって！", 0.85);
@@ -498,6 +534,20 @@ function catUnlocked(c){
   if (u.t==="level") return level()>=u.n;
   return S.challengesDone>=u.n;
 }
+// wear/remove an outfit — only one item per slot at a time
+function equipOutfit(id){
+  const def = CAT_OUTFITS.find(o=>o.id===id);
+  if (!def) return;
+  if (S.outfits.includes(id)){
+    S.outfits = S.outfits.filter(x=>x!==id); // tap again to take it off
+  } else {
+    S.outfits = S.outfits.filter(x=>{
+      const d = CAT_OUTFITS.find(o=>o.id===x);
+      return d && d.slot !== def.slot;
+    }).concat(id);
+  }
+  save();
+}
 function outfitUnlocked(o){
   const u = o.unlock;
   if (u.t==="start") return true;
@@ -542,7 +592,11 @@ function checkUnlocks(done){
       extraBtn = '<button class="pill-btn primary" id="puEquip">Make '+u.item.name+' my buddy!</button> ';
       S._pendingCat = u.item.id;
     } else if (u.kind==="outfit"){
-      visual = catSVG(S.activeCat, u.item.id, {size:160});
+      const preview = S.outfits.filter(x=>{
+        const d = CAT_OUTFITS.find(o=>o.id===x);
+        return d && d.slot !== u.item.slot;
+      }).concat(u.item.id);
+      visual = catSVG(S.activeCat, preview, {size:160});
       name = u.item.name+" "+u.item.e; sub = "A new outfit for your cat!";
       extraBtn = '<button class="pill-btn primary" id="puEquip">Wear it now!</button> ';
       S._pendingOutfit = u.item.id;
@@ -561,21 +615,23 @@ function checkUnlocks(done){
     $("puOk").onclick = close;
     const eq = $("puEquip");
     if (eq) eq.onclick = () => {
-      if (u.kind==="cat") S.activeCat = S._pendingCat;
-      else { S.activeOutfit = S._pendingOutfit; }
-      save(); close();
+      if (u.kind==="cat"){ S.activeCat = S._pendingCat; save(); }
+      else if (!S.outfits.includes(S._pendingOutfit)) equipOutfit(S._pendingOutfit);
+      close();
     };
   };
   next();
 }
 
 // ── Collection ──────────────────────────────────────────────────────
+const SLOT_LABELS = {hat:"Hats 🎩", ear:"Hair Pins & Ear Bows 🎀", face:"Glasses 👓", neck:"Scarves & Necklaces 📿", body:"Jackets & Tops 🧥", legs:"Pants & Skirts 👖", back:"Wings & Extras 🧚"};
+const SLOT_ORDER = ["hat","ear","face","neck","body","legs","back"];
 function renderCollection(){
   const stage = $("stageCat");
-  stage.innerHTML = '<div class="anim-'+S.activeMove+'" style="display:inline-block">'+catSVG(S.activeCat, S.activeOutfit, {size:180})+'</div>';
+  stage.innerHTML = '<div class="anim-'+S.activeMove+'" style="display:inline-block">'+catSVG(S.activeCat, S.outfits, {size:180})+'</div>';
   const breed = CAT_BREEDS.find(c=>c.id===S.activeCat);
-  const outfit = CAT_OUTFITS.find(o=>o.id===S.activeOutfit);
-  $("stageName").textContent = breed.name+" · "+breed.jp+(outfit.id!=="none" ? "  ("+outfit.name+")" : "");
+  const wornEmoji = S.outfits.map(id=>(CAT_OUTFITS.find(o=>o.id===id)||{}).e||"").join(" ");
+  $("stageName").textContent = breed.name+" · "+breed.jp+(wornEmoji ? "  "+wornEmoji : "");
   stage.onclick = () => { sfxMeow(); setTimeout(()=>speak("にゃー", 0.9), 350); };
 
   const mv = $("stageMoves");
@@ -598,7 +654,7 @@ function renderCollection(){
     const ok = catUnlocked(c);
     const d = document.createElement("button");
     d.className = "coll-item"+(ok?"":" locked")+(S.activeCat===c.id?" selected":"");
-    d.innerHTML = catSVG(c.id, S.activeCat===c.id?S.activeOutfit:"none", {size:96})
+    d.innerHTML = catSVG(c.id, S.activeCat===c.id?S.outfits:[], {size:96})
       + '<div class="coll-name">'+(ok?c.name:"???")+'</div>'
       + '<div class="coll-sub">'+(ok?c.jp:unlockHint(c.unlock))+'</div>'
       + (ok?"":'<div class="lock-tag">🔒</div>');
@@ -611,22 +667,42 @@ function renderCollection(){
 
   const og = $("collOutfits");
   og.innerHTML = "";
-  CAT_OUTFITS.forEach(o=>{
-    const ok = outfitUnlocked(o);
-    const d = document.createElement("button");
-    d.className = "coll-item"+(ok?"":" locked")+(S.activeOutfit===o.id?" selected":"");
-    d.innerHTML = '<div class="big-e">'+o.e+'</div><div class="coll-name">'+o.name+'</div>'
-      + '<div class="coll-sub">'+(ok?"tap to wear":unlockHint(o.unlock))+'</div>'
-      + (ok?"":'<div class="lock-tag">🔒</div>');
-    d.onclick = () => {
-      if (!ok){
-        if (o.unlock.t==="fish") toast("In the shop! 🛍️","Buy "+o.name+" for "+o.unlock.n+" 🐟 in the Cat Shop!");
-        else toast("Locked! 🔒", unlockHint(o.unlock)+" to unlock "+o.name+"!");
-        return;
-      }
-      S.activeOutfit = o.id; save(); renderCollection();
-    };
-    og.appendChild(d);
+  if (S.outfits.length){
+    const clear = document.createElement("button");
+    clear.className = "pill-btn";
+    clear.style.marginBottom = "6px";
+    clear.textContent = "🐾 Take everything off";
+    clear.onclick = () => { S.outfits = []; save(); renderCollection(); };
+    og.appendChild(clear);
+  }
+  SLOT_ORDER.forEach(slot=>{
+    const items = CAT_OUTFITS.filter(o=>o.slot===slot);
+    if (!items.length) return;
+    const h = document.createElement("div");
+    h.className = "slot-head";
+    h.textContent = SLOT_LABELS[slot];
+    og.appendChild(h);
+    const grid = document.createElement("div");
+    grid.className = "coll-grid small";
+    items.forEach(o=>{
+      const ok = outfitUnlocked(o);
+      const d = document.createElement("button");
+      d.className = "coll-item"+(ok?"":" locked")+(S.outfits.includes(o.id)?" selected":"");
+      d.innerHTML = catSVG(S.activeCat, [o.id], {size:84})
+        + '<div class="coll-name">'+o.name+'</div>'
+        + '<div class="coll-sub">'+(ok?(S.outfits.includes(o.id)?"wearing it! ✓":"tap to wear"):unlockHint(o.unlock))+'</div>'
+        + (ok?"":'<div class="lock-tag">🔒</div>');
+      d.onclick = () => {
+        if (!ok){
+          if (o.unlock.t==="fish") toast("In the shop! 🛍️","Buy "+o.name+" for "+o.unlock.n+" 🐟 in the Cat Shop!");
+          else toast("Locked! 🔒", unlockHint(o.unlock)+" to unlock "+o.name+"!");
+          return;
+        }
+        equipOutfit(o.id); renderCollection();
+      };
+      grid.appendChild(d);
+    });
+    og.appendChild(grid);
   });
   show("collection");
 }
@@ -636,22 +712,37 @@ function renderShop(){
   renderStats();
   const g = $("shopGrid");
   g.innerHTML = "";
-  CAT_OUTFITS.filter(o=>o.unlock.t==="fish").forEach(o=>{
-    const owned = S.boughtOutfits.includes(o.id);
-    const d = document.createElement("button");
-    d.className = "coll-item"+(owned?" selected":"");
-    d.innerHTML = '<div class="big-e">'+o.e+'</div><div class="coll-name">'+o.name+'</div>'
-      + (owned ? '<div class="buy-tag">Owned ✓</div>' : '<div class="buy-tag">'+o.unlock.n+' 🐟</div>');
-    d.onclick = () => {
-      if (owned){ S.activeOutfit=o.id; save(); toast("Looking cute! 🎀", S.activeCat && (CAT_BREEDS.find(c=>c.id===S.activeCat).name)+" is now wearing the "+o.name+"!"); return; }
-      if (S.fish < o.unlock.n){ toast("Not enough fish! 🐟","You need "+o.unlock.n+" 🐟 but have "+S.fish+".<br>Do lessons and daily challenges to earn more!"); return; }
-      S.fish -= o.unlock.n;
-      S.boughtOutfits.push(o.id);
-      S.activeOutfit = o.id;
-      save(); sfxReward(); confetti(20); renderStats(); renderShop();
-      toast("Yay! New outfit! "+o.e, "Your cat is wearing the "+o.name+" now!");
-    };
-    g.appendChild(d);
+  SLOT_ORDER.forEach(slot=>{
+    const items = CAT_OUTFITS.filter(o=>o.slot===slot && o.unlock.t==="fish");
+    if (!items.length) return;
+    const h = document.createElement("div");
+    h.className = "slot-head";
+    h.textContent = SLOT_LABELS[slot];
+    g.appendChild(h);
+    const grid = document.createElement("div");
+    grid.className = "coll-grid small";
+    items.forEach(o=>{
+      const owned = S.boughtOutfits.includes(o.id);
+      const wearing = S.outfits.includes(o.id);
+      const d = document.createElement("button");
+      d.className = "coll-item"+(wearing?" selected":"");
+      d.innerHTML = catSVG(S.activeCat, [o.id], {size:84})
+        + '<div class="coll-name">'+o.name+'</div>'
+        + (owned ? '<div class="buy-tag">'+(wearing?"Wearing ✓":"Owned — tap to wear")+'</div>'
+                 : '<div class="buy-tag">'+o.unlock.n+' 🐟</div>');
+      d.onclick = () => {
+        const catName = CAT_BREEDS.find(c=>c.id===S.activeCat).name;
+        if (owned){ equipOutfit(o.id); renderShop(); return; }
+        if (S.fish < o.unlock.n){ toast("Not enough fish! 🐟","You need "+o.unlock.n+" 🐟 but have "+S.fish+".<br>Do lessons and daily challenges to earn more!"); return; }
+        S.fish -= o.unlock.n;
+        S.boughtOutfits.push(o.id);
+        if (!S.outfits.includes(o.id)) equipOutfit(o.id);
+        save(); sfxReward(); confetti(20); renderStats(); renderShop();
+        toast("Yay! New outfit! "+o.e, catName+" is wearing the "+o.name+" now!");
+      };
+      grid.appendChild(d);
+    });
+    g.appendChild(grid);
   });
   show("shop");
 }
@@ -675,9 +766,11 @@ function toastAsk(title, bodyHtml, yesLabel, onYes){
 function profilePeek(id){
   try {
     const st = JSON.parse(localStorage.getItem("kittykana_"+id)||"{}");
-    return { cat: st.activeCat||"mochi", outfit: st.activeOutfit||"none",
+    const outfits = Array.isArray(st.outfits) ? st.outfits
+      : (st.activeOutfit && st.activeOutfit!=="none" ? [st.activeOutfit] : []);
+    return { cat: st.activeCat||"mochi", outfits,
       level: 1+Math.floor((st.xp||0)/120), streak: st.streak||0 };
-  } catch(e){ return {cat:"mochi", outfit:"none", level:1, streak:0}; }
+  } catch(e){ return {cat:"mochi", outfits:[], level:1, streak:0}; }
 }
 function showProfilePicker(forced){
   const box = $("profileBox");
@@ -685,7 +778,7 @@ function showProfilePicker(forced){
   REG.list.forEach(p=>{
     const pk = profilePeek(p.id);
     html += '<div class="profile-card" data-pid="'+p.id+'">'
-      + catSVG(pk.cat, pk.outfit, {size:100})
+      + catSVG(pk.cat, pk.outfits, {size:100})
       + '<div class="pc-name">'+p.name+'</div>'
       + '<div class="pc-sub">Level '+pk.level+' · 🔥 '+pk.streak+'</div>'
       + '<button class="pc-del" data-del="'+p.id+'" aria-label="Delete profile">✕</button></div>';

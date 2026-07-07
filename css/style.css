@@ -189,7 +189,8 @@ h3 { font-size:22px; color:#7A5C4E; margin:22px 0 10px; }
   font-size:12px; padding:3px 8px; font-weight:700; color:#A88B76;
 }
 .coll-item .big-e { font-size:44px; line-height:1.4; }
-.buy-tag { display:inline-block; background:#DDF0FF; border-radius:999px; padding:4px 12px; font-weight:800; color:#4A7AAD; font-size:14.5px; margin-top:6px; }
+.buy-tag { display:inline-block; background:#DDF0FF; border-radius:999px; padding:4px 12px; font-weight:800; color:#4A7AAD; font-size:13.5px; margin-top:6px; }
+.slot-head { font-size:18px; color:#A88B76; font-weight:800; margin:18px 0 10px; }
 
 /* ── cat animations (moves) ── */
 .anim-idle {}
