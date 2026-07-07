@@ -105,7 +105,11 @@ function showVoiceSettings(){
   const jaVoices = jaVoicesRanked();
   const cur = localStorage.getItem("kittykana_voice");
   const speed = localStorage.getItem("kittykana_speed")||"normal";
-  let html = '<div class="p-title">🔊 Voice</div><div class="p-body">Pick the Japanese voice and speed.<br><span class="jp-mini">Tip: download "Kyoko (Enhanced)" in Settings → Accessibility → Spoken Content → Voices → Japanese for the nicest sound!</span></div>';
+  let html = '<div class="p-title">🔊 Audio</div>'
+    + '<div class="p-body" style="text-align:left"><b>🎤 Letter sounds</b> (あ, か, し…) always use <b>real human recordings</b> — no setting needed. '
+    + '<button class="pill-btn" id="vsDemo" style="padding:6px 14px; font-size:15px">▶ hear them</button></div>'
+    + '<div class="p-body" style="text-align:left; margin-top:2px"><b>🗣️ Words &amp; sentences</b> use your iPad\'s Japanese voice — pick it below.'
+    + '<br><span class="jp-mini">Best quality: download "Kyoko (Enhanced)" in Settings → Accessibility → Spoken Content → Voices → Japanese, then pick it here.</span></div>';
   if (!jaVoices.length) html += '<div class="p-body">No Japanese voice found on this device yet — words will still play once one is installed (Settings → Accessibility → Spoken Content → Voices → Japanese).</div>';
   jaVoices.forEach((v,i)=>{
     const sel = cur && !NOVELTY_VOICE.test(cur) ? cur===v.name : i===0;
@@ -118,6 +122,7 @@ function showVoiceSettings(){
     + '<button class="pill-btn primary" id="puOk">Done</button>';
   $("popupInner").innerHTML = html;
   $("popup").classList.remove("hidden");
+  $("vsDemo").onclick = ()=>{ soundItOut("ねこ"); };
   document.querySelectorAll("[data-voice]").forEach(b=>b.onclick = ()=>{
     localStorage.setItem("kittykana_voice", b.dataset.voice);
     speak("こんにちは！ねこがだいすき！", 0.85);
@@ -148,24 +153,58 @@ const KANA_AUDIO = (()=>{
 // decoded buffer can play outside a tap gesture on iPad once the
 // AudioContext is unlocked, so clips never silently fall back to TTS.
 const clipBuffers = {};
+function loadClip(syll){
+  const c = ac();
+  if (!c) return Promise.reject("no ctx");
+  const cached = clipBuffers[syll];
+  if (cached === "error") return Promise.reject("decode failed");
+  if (cached) return Promise.resolve(cached);
+  return fetch("audio/kana/"+syll+".m4a")
+    .then(r=>{ if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(ab=>new Promise((res,rej)=>c.decodeAudioData(ab, res, rej)))
+    .then(buf=>{ clipBuffers[syll] = buf; return buf; })
+    .catch(e=>{ clipBuffers[syll] = "error"; throw e; });
+}
 function playClip(syll, onFail){
   const c = ac();
   if (!c){ onFail(); return; }
   if (c.state === "suspended") c.resume();
-  const play = buf => {
+  loadClip(syll).then(buf=>{
     const src = c.createBufferSource();
     src.buffer = buf;
     src.connect(c.destination);
     src.start();
-  };
-  const cached = clipBuffers[syll];
-  if (cached === "error"){ onFail(); return; }
-  if (cached){ play(cached); return; }
-  fetch("audio/kana/"+syll+".m4a")
-    .then(r=>{ if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-    .then(ab=>new Promise((res,rej)=>c.decodeAudioData(ab, res, rej)))
-    .then(buf=>{ clipBuffers[syll] = buf; play(buf); })
-    .catch(()=>{ clipBuffers[syll] = "error"; onFail(); });
+  }).catch(()=>{
+    // decode unsupported? try a plain <audio> element before giving up to TTS
+    try { new Audio("audio/kana/"+syll+".m4a").play().catch(onFail); }
+    catch(e){ onFail(); }
+  });
+}
+// "Sound it out": pronounce a whole word syllable-by-syllable with the
+// real recordings. Returns false if the word has sounds we have no clip for.
+function soundItOut(word){
+  const c = ac();
+  if (!c) return false;
+  if (c.state === "suspended") c.resume();
+  const sylls = [];
+  for (const ch of word){
+    if (KANA_AUDIO[ch]) sylls.push(KANA_AUDIO[ch]);
+    else if (ch==="っ" || ch==="ッ" || ch==="ー" || ch===" " || ch==="　") sylls.push(null); // little pause
+    else return false;   // combo sounds etc — no clip, caller uses slow TTS
+  }
+  speechSynthesis.cancel();
+  Promise.all(sylls.map(s=>s ? loadClip(s) : Promise.resolve(null))).then(bufs=>{
+    let t = c.currentTime + 0.08;
+    bufs.forEach(buf=>{
+      if (!buf){ t += 0.18; return; }
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.connect(c.destination);
+      src.start(t);
+      t += buf.duration + 0.09;
+    });
+  }).catch(()=>speak(word, 0.55));
+  return true;
 }
 // speak Japanese: real recording for single kana, TTS for everything else
 function speakJa(text, rate){
@@ -380,8 +419,12 @@ function renderCard(){
       + '<div class="example-box"><span class="ex-kana">'+c.ex[0]+'</span><br>'+c.ex[1]+" — "+c.ex[2]+'</div>';
   }
   html += '<button class="sound-btn" id="cardSound" aria-label="Play sound">🔊</button>';
+  if (c.type === "word")
+    html += ' <button class="sound-btn small" id="cardSlow" aria-label="Sound it out slowly" title="Sound it out" style="background:#8FD19A; box-shadow:0 5px 0 #6FB07A">🐢</button>';
   el.innerHTML = html;
   $("cardSound").onclick = () => speakCard(c);
+  const slow = $("cardSlow");
+  if (slow) slow.onclick = () => { if (!soundItOut(c.kana)) speak(c.kana, 0.55); };
   const pct = ((L.idx+1)/L.cards.length)*100;
   $("lessonProg").style.width = pct+"%";
   $("lessonProgCat").style.left = pct+"%";
