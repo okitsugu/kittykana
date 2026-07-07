@@ -25,6 +25,7 @@
   <button class="statchip" id="homeBtn" aria-label="Home">🏠</button>
   <div id="appTitle"><span class="t1">Kitty</span><span class="t2">Kana</span><span class="tj">ねこの にほんご</span></div>
   <div id="stats">
+    <button class="statchip" id="chipVoice" title="Voice settings">🔊</button>
     <button class="statchip" id="chipProfile" title="Switch player">🐱 <b id="statName">…</b></button>
     <div class="statchip" id="chipLevel" title="Level">⭐ <b id="statLevel">1</b></div>
     <div class="statchip" id="chipFish" title="Fish treats">🐟 <b id="statFish">0</b></div>
@@ -58,6 +59,9 @@
       <button class="bigcard" data-nav="katakana"><div class="bigcard-emoji">ア</div><div class="bigcard-txt"><div class="bigcard-title">Katakana</div><div class="bigcard-sub" id="subKata"></div></div></button>
       <button class="bigcard" data-nav="words"><div class="bigcard-emoji">🗣️</div><div class="bigcard-txt"><div class="bigcard-title">Words</div><div class="bigcard-sub" id="subWords"></div></div></button>
       <button class="bigcard" data-nav="kanji" id="kanjiCard"><div class="bigcard-emoji">日</div><div class="bigcard-txt"><div class="bigcard-title">Kanji</div><div class="bigcard-sub" id="subKanji"></div></div></button>
+      <button class="bigcard" data-nav="sentences" id="sentCard"><div class="bigcard-emoji">💬</div><div class="bigcard-txt"><div class="bigcard-title">Sentences</div><div class="bigcard-sub" id="subSent"></div></div></button>
+      <button class="bigcard" data-nav="games"><div class="bigcard-emoji">🎮</div><div class="bigcard-txt"><div class="bigcard-title">Games</div><div class="bigcard-sub">Play with what you learned!</div></div></button>
+      <button class="bigcard" data-nav="cathome"><div class="bigcard-emoji">🏠</div><div class="bigcard-txt"><div class="bigcard-title">Cat Home</div><div class="bigcard-sub" id="subHome"></div></div></button>
       <button class="bigcard" data-nav="collection"><div class="bigcard-emoji">🐱</div><div class="bigcard-txt"><div class="bigcard-title">My Cats</div><div class="bigcard-sub" id="subCats"></div></div></button>
       <button class="bigcard" data-nav="shop"><div class="bigcard-emoji">🛍️</div><div class="bigcard-txt"><div class="bigcard-title">Cat Shop</div><div class="bigcard-sub">Spend your fish!</div></div></button>
     </div>
@@ -112,6 +116,44 @@
     <h3>Outfits</h3><div id="collOutfits"></div>
   </section>
 
+  <!-- ═══ GAMES HUB ═══ -->
+  <section class="screen" id="screen-games">
+    <h2>Games <span class="jp-mini">あそぼう！</span></h2>
+    <p class="units-blurb">Practice what you've learned — and earn fish! (Big treats for the first 3 games each day.)</p>
+    <div class="home-grid" id="gamesGrid"></div>
+  </section>
+
+  <!-- ═══ GAME PLAY AREA ═══ -->
+  <section class="screen" id="screen-game">
+    <div class="lesson-top">
+      <button class="pill-btn" id="gameQuit">✕</button>
+      <div id="gameHud" class="game-hud"></div>
+    </div>
+    <div id="gameArea"></div>
+  </section>
+
+  <!-- ═══ CAT HOME ═══ -->
+  <section class="screen" id="screen-cathome">
+    <h2>Cat Home <span class="jp-mini">ねこの おうち</span></h2>
+    <div id="catHomeScene" class="cathome-scene">
+      <div class="ch-wall"></div>
+      <div class="ch-window" id="chWindow"></div>
+      <div class="ch-tower"><div class="ch-tower-top"></div><div class="ch-tower-pole"></div><div class="ch-tower-base"></div></div>
+      <div class="ch-shelf"></div>
+      <div class="ch-plant">🪴</div>
+      <div class="ch-toybox">🧺</div>
+      <div class="ch-yarn">🧶</div>
+      <div class="ch-floor"></div>
+      <div class="ch-rug"></div>
+      <div class="ch-bowl" id="chBowl">🥣</div>
+      <div id="chCats"></div>
+    </div>
+    <div class="cathome-bar">
+      <button class="pill-btn primary" id="chTreatBtn">🐟 Give a treat (1 fish)</button>
+      <div class="cathome-hint">Tap a cat to say hello! なでなで 🐾</div>
+    </div>
+  </section>
+
   <!-- ═══ SHOP ═══ -->
   <section class="screen" id="screen-shop">
     <h2>Cat Shop <span class="jp-mini">ねこの おみせ</span></h2>
@@ -130,7 +172,10 @@
 <script src="js/kana.js"></script>
 <script src="js/vocab.js"></script>
 <script src="js/kanji.js"></script>
+<script src="js/sentences.js"></script>
 <script src="js/cats.js"></script>
 <script src="js/app.js"></script>
+<script src="js/games.js"></script>
+<script src="js/cathome.js"></script>
 </body>
 </html>

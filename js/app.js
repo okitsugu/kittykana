@@ -13,8 +13,9 @@ const DEFAULTS = {
   xp:0, fish:0, streak:0, bestStreak:0,
   lastChallengeDay:null, challengesDone:0,
   unitStars:{}, totalStars:0,
-  activeCat:"mochi", outfits:[], activeMove:"idle",
+  activeCat:"mochi", catOutfits:{}, activeMove:"idle",
   boughtOutfits:[], seenUnlocks:["cat:mochi","move:idle"],
+  gamePlays:{},
 };
 // ── Profiles: each player gets their own save slot ──
 let REG;
@@ -37,13 +38,20 @@ let S = JSON.parse(JSON.stringify(DEFAULTS));
 function loadState(){
   S = JSON.parse(JSON.stringify(DEFAULTS));
   try { Object.assign(S, JSON.parse(localStorage.getItem("kittykana_"+REG.active)||"{}")); } catch(e){}
-  // migrate old single-outfit saves to the outfit-slots system
-  if (!Array.isArray(S.outfits)) S.outfits = [];
+  // migrate old saves: single outfit → outfit list → per-cat wardrobes
   if (typeof S.activeOutfit === "string"){
-    if (S.activeOutfit !== "none" && !S.outfits.length) S.outfits = [S.activeOutfit];
+    if (S.activeOutfit !== "none") S.outfits = [S.activeOutfit];
     delete S.activeOutfit;
   }
+  if (!S.catOutfits || typeof S.catOutfits !== "object") S.catOutfits = {};
+  if (Array.isArray(S.outfits)){
+    if (S.outfits.length && !S.catOutfits[S.activeCat]) S.catOutfits[S.activeCat] = S.outfits;
+    delete S.outfits;
+  }
+  if (!S.gamePlays || typeof S.gamePlays !== "object") S.gamePlays = {};
 }
+// each cat wears its own outfit set
+function outfitsFor(catId){ return S.catOutfits[catId] || []; }
 function save(){ if (REG.active) localStorage.setItem("kittykana_"+REG.active, JSON.stringify(S)); }
 
 const level = () => 1 + Math.floor(S.xp/120);
@@ -66,12 +74,43 @@ function speak(text, rate){
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  if (!jpVoice) findVoice();
-  if (jpVoice) u.voice = jpVoice;
+  const pref = localStorage.getItem("kittykana_voice");
+  const prefV = pref && speechSynthesis.getVoices().find(v=>v.name===pref);
+  if (prefV) u.voice = prefV;
+  else { if (!jpVoice) findVoice(); if (jpVoice) u.voice = jpVoice; }
   u.lang = "ja-JP";
-  u.rate = rate || 0.8;
+  u.rate = (rate || 0.8) * (localStorage.getItem("kittykana_speed")==="slow" ? 0.8 : 1);
   u.pitch = 1.0;
   speechSynthesis.speak(u);
+}
+// voice settings popup (device-level, shared by all profiles)
+function showVoiceSettings(){
+  const jaVoices = speechSynthesis.getVoices().filter(v=>v.lang && v.lang.startsWith("ja"));
+  const cur = localStorage.getItem("kittykana_voice");
+  const speed = localStorage.getItem("kittykana_speed")||"normal";
+  let html = '<div class="p-title">🔊 Voice</div><div class="p-body">Pick the Japanese voice and speed.</div>';
+  if (!jaVoices.length) html += '<div class="p-body">No Japanese voice found on this device yet — words will still play once one is installed (Settings → Accessibility → Spoken Content → Voices → Japanese).</div>';
+  jaVoices.forEach(v=>{
+    html += '<button class="voice-row'+((cur ? cur===v.name : /kyoko/i.test(v.name))?' selected':'')+'" data-voice="'+v.name+'">'
+      + '🗣️ '+v.name+'<span class="tag">'+v.lang+(/premium|enhanced/i.test(v.name)?' ✨':'')+'</span></button>';
+  });
+  html += '<div class="p-body" style="margin-top:8px">Speed</div>'
+    + '<button class="voice-row'+(speed==="normal"?' selected':'')+'" data-speed="normal">🐇 Normal</button>'
+    + '<button class="voice-row'+(speed==="slow"?' selected':'')+'" data-speed="slow">🐢 Slow &amp; clear</button>'
+    + '<button class="pill-btn primary" id="puOk">Done</button>';
+  $("popupInner").innerHTML = html;
+  $("popup").classList.remove("hidden");
+  document.querySelectorAll("[data-voice]").forEach(b=>b.onclick = ()=>{
+    localStorage.setItem("kittykana_voice", b.dataset.voice);
+    speak("こんにちは！ねこがだいすき！", 0.85);
+    showVoiceSettings();
+  });
+  document.querySelectorAll("[data-speed]").forEach(b=>b.onclick = ()=>{
+    localStorage.setItem("kittykana_speed", b.dataset.speed);
+    speak("いっしょにべんきょうしよう", 0.85);
+    showVoiceSettings();
+  });
+  $("puOk").onclick = ()=>$("popup").classList.add("hidden");
 }
 
 // ── Real recorded kana audio (public-domain recordings, Wikimedia Commons) ──
@@ -152,10 +191,14 @@ function kanjiUnits(){
       kanji: KANJI.slice(i*10,(i+1)*10) });
   return units;
 }
+function sentenceUnits(){
+  return (window.SENTENCES||[]).map(u=>({ id:u.id, type:"sent", title:u.title, subtitle:u.jp, sents:u.sents }));
+}
 function sectionUnits(section){
   if (section==="hiragana") return kanaUnits("hiragana");
   if (section==="katakana") return kanaUnits("katakana");
   if (section==="words") return wordPacks();
+  if (section==="sentences") return sentenceUnits();
   return kanjiUnits();
 }
 function sectionDone(section){
@@ -164,6 +207,9 @@ function sectionDone(section){
 }
 function kanjiUnlocked(){
   return sectionDone("hiragana") >= 15 && sectionDone("katakana") >= 8 || level() >= 10;
+}
+function sentencesUnlocked(){
+  return sectionDone("hiragana") >= 5 || level() >= 4;
 }
 
 // ── Navigation ──────────────────────────────────────────────────────
@@ -193,7 +239,7 @@ const GREETINGS = [
 ];
 function renderHome(){
   renderStats();
-  $("homeCat").innerHTML = catSVG(S.activeCat, S.outfits, {size:170});
+  $("homeCat").innerHTML = catSVG(S.activeCat, outfitsFor(S.activeCat), {size:170});
   const breed = CAT_BREEDS.find(c=>c.id===S.activeCat);
   $("homeCatName").textContent = breed.name+" · "+breed.jp;
   const g = pick(GREETINGS);
@@ -209,6 +255,11 @@ function renderHome(){
   $("subHira").textContent = sectionDone("hiragana")+" / "+kanaUnits("hiragana").length+" lessons";
   $("subKata").textContent = sectionDone("katakana")+" / "+kanaUnits("katakana").length+" lessons";
   $("subWords").textContent = sectionDone("words")+" / "+wordPacks().length+" packs";
+  const sc = $("sentCard");
+  if (sentencesUnlocked()){ sc.classList.remove("locked"); $("subSent").textContent = sectionDone("sentences")+" / "+sentenceUnits().length+" patterns"; }
+  else { sc.classList.add("locked"); $("subSent").textContent = "🔒 Learn 5 hiragana rows first!"; }
+  const homeCats = CAT_BREEDS.filter(c=>catUnlocked(c)).length;
+  $("subHome").textContent = homeCats===1 ? "Mochi is waiting for you!" : homeCats+" cats live here!";
   const kc = $("kanjiCard");
   if (kanjiUnlocked()){ kc.classList.remove("locked"); $("subKanji").textContent = sectionDone("kanji")+" / "+kanjiUnits().length+" sets"; }
   else { kc.classList.add("locked"); $("subKanji").textContent = "🔒 Finish hiragana & katakana first!"; }
@@ -223,10 +274,11 @@ const SECTION_META = {
   katakana: ["Katakana アイウエオ","The alphabet for fun borrowed words like ice cream & robot!"],
   words:    ["Words ことば","Learn real Japanese words, 10 at a time."],
   kanji:    ["Kanji かんじ","Picture characters from China — each one tells a story!"],
+  sentences:["Sentences ぶんしょう","Put words together and say whole sentences — like a real speaker!"],
 };
 function renderUnits(section){
   currentSection = section;
-  const [title, blurb] = SECTION_META[section];
+  const [title, blurb] = SECTION_META[section] || [section, ""];
   $("unitsTitle").textContent = title;
   $("unitsBlurb").textContent = blurb;
   const list = $("unitsList");
@@ -237,7 +289,7 @@ function renderUnits(section){
     const locked = i>0 && !(S.unitStars[units[i-1].id]>0);
     const row = document.createElement("button");
     row.className = "unit-row"+(locked?" locked":"");
-    const badge = u.chars ? u.chars[0][0] : (u.kanji ? u.kanji[0].c : "🐾");
+    const badge = u.chars ? u.chars[0][0] : (u.kanji ? u.kanji[0].c : (u.sents ? u.sents[0].e : "🐾"));
     row.innerHTML = '<div class="unit-badge">'+badge+'</div>'
       + '<div><div class="unit-title">'+u.title+'</div><div class="unit-sub">'+(u.subtitle||"")+'</div></div>'
       + '<div class="unit-stars">'+(locked?"🔒":"⭐".repeat(stars)+"☆".repeat(3-stars))+'</div>';
@@ -255,6 +307,7 @@ let L = null; // {unit, cards, idx, mode}
 function unitCards(u){
   if (u.chars) return u.chars.map(c=>({type:"kana", ch:c[0], romaji:c[1], exK:c[2], exR:c[3], exE:c[4], emoji:c[5]}));
   if (u.words) return u.words.map(w=>({type:"word", kana:w[0], romaji:w[1], en:w[2], emoji:w[4]}));
+  if (u.sents) return u.sents.map(sn=>({type:"sent", chunks:sn.c, kana:sn.c.join(""), romaji:sn.r, en:sn.en, emoji:sn.e}));
   return u.kanji.map(k=>({type:"kanji", ch:k.c, meaning:k.m, romaji:k.r, kana:k.kana, ex:k.ex, emoji:k.e}));
 }
 function startLesson(u){
@@ -267,6 +320,7 @@ function startLesson(u){
 function speakCard(c){
   if (c.type==="kana") speakJa(c.ch, 0.7);
   else if (c.type==="word") speak(c.kana, 0.8);
+  else if (c.type==="sent") speak(c.kana, 0.85);
   else speak(c.kana + "。" + c.ex[0], 0.8);
 }
 function renderCard(){
@@ -276,6 +330,11 @@ function renderCard(){
   if (c.type==="kana"){
     html = '<div class="big-char">'+c.ch+'</div><div class="romaji-lbl">'+c.romaji+'</div>';
     if (c.exK) html += '<div class="example-box"><span class="ex-emoji">'+(c.emoji||"")+'</span> <span class="ex-kana">'+c.exK+'</span><br>'+c.exR+" — "+c.exE+'</div>';
+  } else if (c.type==="sent"){
+    html = '<div style="font-size:52px">'+(c.emoji||"")+'</div>'
+      + '<div class="big-char" style="font-size:44px">'+c.chunks.join(" ")+'</div>'
+      + '<div class="romaji-lbl" style="font-size:22px">'+c.romaji+'</div>'
+      + '<div class="meaning-lbl">'+c.en+'</div>';
   } else if (c.type==="word"){
     html = '<div style="font-size:58px">'+(c.emoji||"")+'</div><div class="big-char" style="font-size:64px">'+c.kana+'</div>'
       + '<div class="romaji-lbl" style="font-size:26px">'+c.romaji+'</div><div class="meaning-lbl">'+c.en+'</div>';
@@ -358,7 +417,19 @@ function buildUnitQuiz(u){
     return chars.map(c=>qKana(c, u));
   }
   if (u.words) return shuffle(u.words).map(w=>qWord(w, VOCAB));
+  if (u.sents){
+    const qs = shuffle(u.sents).map(sn=>qArrange(sn));
+    shuffle(u.sents).slice(0,2).forEach(sn=>{
+      qs.push({ prompt:'Which one means: "'+sn.en+'" '+(sn.e||""), big:sn.e||"💬", say:sn.c.join(""), sayAfter:true,
+        choices: mkChoices(sn.c.join(" "), distractors(u.sents.filter(x=>x!==sn), sn.c.join(" "), 3, x=>x.c.join(" ")), "word") });
+    });
+    return qs;
+  }
   return shuffle(u.kanji).map(k=>qKanji(k, KANJI));
+}
+function qArrange(sn){
+  return { type:"arrange", prompt:'Build the sentence: "'+sn.en+'" '+(sn.e||""),
+    chunks:sn.c, say:sn.c.join(""), romaji:sn.r };
 }
 function startQuiz(questions, ctx){
   Q = { questions, idx:0, correct:0, ctx };
@@ -377,13 +448,17 @@ function renderQuestion(){
 
   const ch = $("quizChoices");
   ch.innerHTML = "";
-  q.choices.forEach(c => {
-    const b = document.createElement("button");
-    b.className = "choice-btn "+(c.cls||"");
-    b.textContent = c.label;
-    b.onclick = () => answer(b, c, q);
-    ch.appendChild(b);
-  });
+  if (q.type === "arrange"){
+    renderArrange(q, ch);
+  } else {
+    q.choices.forEach(c => {
+      const b = document.createElement("button");
+      b.className = "choice-btn "+(c.cls||"");
+      b.textContent = c.label;
+      b.onclick = () => answer(b, c, q);
+      ch.appendChild(b);
+    });
+  }
   $("quizFeedback").textContent = "";
   $("quizFeedback").className = "quiz-feedback";
   const pct = (Q.idx/Q.questions.length)*100;
@@ -392,6 +467,59 @@ function renderQuestion(){
   $("quizScore").textContent = "⭐ "+Q.correct;
 }
 const PRAISE = ["せいかい! Correct! 🎉","やったね! You did it! ✨","すごい! Amazing! 🌟","パーフェクト! 💮","にゃんderful! 🐱"];
+// Duolingo-style tile arranging: tap tiles into the answer row
+function renderArrange(q, container){
+  const answerRow = document.createElement("div");
+  answerRow.className = "arrange-answer";
+  const bank = document.createElement("div");
+  bank.className = "arrange-bank";
+  container.appendChild(answerRow);
+  container.appendChild(bank);
+  let resolved = false;
+  const placed = [];
+  const tiles = shuffle(q.chunks.map((c,i)=>({c,i})));
+  tiles.forEach(t=>{
+    const b = document.createElement("button");
+    b.className = "tile-btn";
+    b.textContent = t.c;
+    b.onclick = ()=>{
+      if (resolved) return;
+      if (b.parentNode === bank){
+        answerRow.appendChild(b); b.classList.add("placed");
+        placed.push(t);
+      } else {
+        bank.appendChild(b); b.classList.remove("placed");
+        placed.splice(placed.indexOf(t),1);
+      }
+      tone(520+placed.length*60, 0, .08, "sine", .08);
+      if (placed.length === q.chunks.length) resolve();
+    };
+    bank.appendChild(b);
+  });
+  function resolve(){
+    resolved = true;
+    const ok = placed.map(t=>t.c).join("") === q.chunks.join("");
+    const fb = $("quizFeedback");
+    if (ok){
+      Q.correct++;
+      sfxGood();
+      answerRow.querySelectorAll(".tile-btn").forEach(b=>b.classList.add("good"));
+      fb.textContent = pick(PRAISE);
+    } else {
+      sfxBad();
+      answerRow.querySelectorAll(".tile-btn").forEach(b=>b.classList.add("bad"));
+      fb.textContent = "Almost! → "+q.chunks.join(" ");
+      fb.classList.add("bad");
+    }
+    speak(q.say, 0.85);
+    $("quizScore").textContent = "⭐ "+Q.correct;
+    setTimeout(()=>{
+      Q.idx++;
+      if (Q.idx < Q.questions.length) renderQuestion();
+      else finishQuiz();
+    }, ok ? 1400 : 2600);
+  }
+}
 function answer(btn, choice, q){
   document.querySelectorAll(".choice-btn").forEach(b=>b.disabled=true);
   if (choice.correct){
@@ -466,7 +594,7 @@ function finishQuiz(){
     + '<div class="r-stars">'+("⭐".repeat(stars)+"☆".repeat(Math.max(0,3-stars)))+'</div>'
     + lines.map(l=>'<div class="r-line">'+l+'</div>').join("")
     + '<div class="r-line">+'+fishGain+' 🐟 &nbsp; +'+xpGain+' XP</div>'
-    + '<div class="r-cat">'+catSVG(S.activeCat, S.outfits, {size:150})+'</div>'
+    + '<div class="r-cat">'+catSVG(S.activeCat, outfitsFor(S.activeCat), {size:150})+'</div>'
     + '<button class="pill-btn primary big" id="resultsOk">'+(stars===0?"Try Again 💪":"Yay! つづける ▶")+'</button>';
   show("results");
   speak(stars>=2 ? "すごい！よくできました！" : stars===1 ? "よくできました" : "がんばって！", 0.85);
@@ -538,10 +666,11 @@ function catUnlocked(c){
 function equipOutfit(id){
   const def = CAT_OUTFITS.find(o=>o.id===id);
   if (!def) return;
-  if (S.outfits.includes(id)){
-    S.outfits = S.outfits.filter(x=>x!==id); // tap again to take it off
+  const worn = outfitsFor(S.activeCat);
+  if (worn.includes(id)){
+    S.catOutfits[S.activeCat] = worn.filter(x=>x!==id); // tap again to take it off
   } else {
-    S.outfits = S.outfits.filter(x=>{
+    S.catOutfits[S.activeCat] = worn.filter(x=>{
       const d = CAT_OUTFITS.find(o=>o.id===x);
       return d && d.slot !== def.slot;
     }).concat(id);
@@ -592,7 +721,7 @@ function checkUnlocks(done){
       extraBtn = '<button class="pill-btn primary" id="puEquip">Make '+u.item.name+' my buddy!</button> ';
       S._pendingCat = u.item.id;
     } else if (u.kind==="outfit"){
-      const preview = S.outfits.filter(x=>{
+      const preview = outfitsFor(S.activeCat).filter(x=>{
         const d = CAT_OUTFITS.find(o=>o.id===x);
         return d && d.slot !== u.item.slot;
       }).concat(u.item.id);
@@ -616,7 +745,7 @@ function checkUnlocks(done){
     const eq = $("puEquip");
     if (eq) eq.onclick = () => {
       if (u.kind==="cat"){ S.activeCat = S._pendingCat; save(); }
-      else if (!S.outfits.includes(S._pendingOutfit)) equipOutfit(S._pendingOutfit);
+      else if (!outfitsFor(S.activeCat).includes(S._pendingOutfit)) equipOutfit(S._pendingOutfit);
       close();
     };
   };
@@ -628,9 +757,9 @@ const SLOT_LABELS = {hat:"Hats 🎩", ear:"Hair Pins & Ear Bows 🎀", face:"Gla
 const SLOT_ORDER = ["hat","ear","face","neck","body","legs","back"];
 function renderCollection(){
   const stage = $("stageCat");
-  stage.innerHTML = '<div class="anim-'+S.activeMove+'" style="display:inline-block">'+catSVG(S.activeCat, S.outfits, {size:180})+'</div>';
+  stage.innerHTML = '<div class="anim-'+S.activeMove+'" style="display:inline-block">'+catSVG(S.activeCat, outfitsFor(S.activeCat), {size:180})+'</div>';
   const breed = CAT_BREEDS.find(c=>c.id===S.activeCat);
-  const wornEmoji = S.outfits.map(id=>(CAT_OUTFITS.find(o=>o.id===id)||{}).e||"").join(" ");
+  const wornEmoji = outfitsFor(S.activeCat).map(id=>(CAT_OUTFITS.find(o=>o.id===id)||{}).e||"").join(" ");
   $("stageName").textContent = breed.name+" · "+breed.jp+(wornEmoji ? "  "+wornEmoji : "");
   stage.onclick = () => { sfxMeow(); setTimeout(()=>speak("にゃー", 0.9), 350); };
 
@@ -654,7 +783,7 @@ function renderCollection(){
     const ok = catUnlocked(c);
     const d = document.createElement("button");
     d.className = "coll-item"+(ok?"":" locked")+(S.activeCat===c.id?" selected":"");
-    d.innerHTML = catSVG(c.id, S.activeCat===c.id?S.outfits:[], {size:96})
+    d.innerHTML = catSVG(c.id, outfitsFor(c.id), {size:96})
       + '<div class="coll-name">'+(ok?c.name:"???")+'</div>'
       + '<div class="coll-sub">'+(ok?c.jp:unlockHint(c.unlock))+'</div>'
       + (ok?"":'<div class="lock-tag">🔒</div>');
@@ -667,12 +796,12 @@ function renderCollection(){
 
   const og = $("collOutfits");
   og.innerHTML = "";
-  if (S.outfits.length){
+  if (outfitsFor(S.activeCat).length){
     const clear = document.createElement("button");
     clear.className = "pill-btn";
     clear.style.marginBottom = "6px";
     clear.textContent = "🐾 Take everything off";
-    clear.onclick = () => { S.outfits = []; save(); renderCollection(); };
+    clear.onclick = () => { S.catOutfits[S.activeCat] = []; save(); renderCollection(); };
     og.appendChild(clear);
   }
   SLOT_ORDER.forEach(slot=>{
@@ -687,10 +816,10 @@ function renderCollection(){
     items.forEach(o=>{
       const ok = outfitUnlocked(o);
       const d = document.createElement("button");
-      d.className = "coll-item"+(ok?"":" locked")+(S.outfits.includes(o.id)?" selected":"");
+      d.className = "coll-item"+(ok?"":" locked")+(outfitsFor(S.activeCat).includes(o.id)?" selected":"");
       d.innerHTML = catSVG(S.activeCat, [o.id], {size:84})
         + '<div class="coll-name">'+o.name+'</div>'
-        + '<div class="coll-sub">'+(ok?(S.outfits.includes(o.id)?"wearing it! ✓":"tap to wear"):unlockHint(o.unlock))+'</div>'
+        + '<div class="coll-sub">'+(ok?(outfitsFor(S.activeCat).includes(o.id)?"wearing it! ✓":"tap to wear"):unlockHint(o.unlock))+'</div>'
         + (ok?"":'<div class="lock-tag">🔒</div>');
       d.onclick = () => {
         if (!ok){
@@ -723,7 +852,7 @@ function renderShop(){
     grid.className = "coll-grid small";
     items.forEach(o=>{
       const owned = S.boughtOutfits.includes(o.id);
-      const wearing = S.outfits.includes(o.id);
+      const wearing = outfitsFor(S.activeCat).includes(o.id);
       const d = document.createElement("button");
       d.className = "coll-item"+(wearing?" selected":"");
       d.innerHTML = catSVG(S.activeCat, [o.id], {size:84})
@@ -736,7 +865,7 @@ function renderShop(){
         if (S.fish < o.unlock.n){ toast("Not enough fish! 🐟","You need "+o.unlock.n+" 🐟 but have "+S.fish+".<br>Do lessons and daily challenges to earn more!"); return; }
         S.fish -= o.unlock.n;
         S.boughtOutfits.push(o.id);
-        if (!S.outfits.includes(o.id)) equipOutfit(o.id);
+        if (!outfitsFor(S.activeCat).includes(o.id)) equipOutfit(o.id);
         save(); sfxReward(); confetti(20); renderStats(); renderShop();
         toast("Yay! New outfit! "+o.e, catName+" is wearing the "+o.name+" now!");
       };
@@ -766,8 +895,11 @@ function toastAsk(title, bodyHtml, yesLabel, onYes){
 function profilePeek(id){
   try {
     const st = JSON.parse(localStorage.getItem("kittykana_"+id)||"{}");
-    const outfits = Array.isArray(st.outfits) ? st.outfits
-      : (st.activeOutfit && st.activeOutfit!=="none" ? [st.activeOutfit] : []);
+    const cat = st.activeCat||"mochi";
+    let outfits = [];
+    if (st.catOutfits && st.catOutfits[cat]) outfits = st.catOutfits[cat];
+    else if (Array.isArray(st.outfits) && st.outfits.length) outfits = st.outfits;
+    else if (st.activeOutfit && st.activeOutfit !== "none") outfits = [st.activeOutfit];
     return { cat: st.activeCat||"mochi", outfits,
       level: 1+Math.floor((st.xp||0)/120), streak: st.streak||0 };
   } catch(e){ return {cat:"mochi", outfits:[], level:1, streak:0}; }
@@ -909,6 +1041,12 @@ document.querySelectorAll("[data-nav]").forEach(b=>{
     const nav = b.dataset.nav;
     if (nav==="collection"){ renderCollection(); return; }
     if (nav==="shop"){ renderShop(); return; }
+    if (nav==="games"){ if (window.renderGamesHub) window.renderGamesHub(); return; }
+    if (nav==="cathome"){ if (window.enterCatHome) window.enterCatHome(); return; }
+    if (nav==="sentences" && !sentencesUnlocked()){
+      toast("Sentences are coming! 🔒","Finish <b>5 hiragana lessons</b> first, then you can build whole sentences!<br>がんばって！");
+      return;
+    }
     if (nav==="kanji" && !kanjiUnlocked()){
       toast("Kanji is coming! 🔒","Kanji unlocks after you finish <b>all Hiragana</b> lessons and at least <b>8 Katakana</b> lessons.<br>You're on your way! がんばって！");
       return;
@@ -942,6 +1080,45 @@ function checkStreakDecay(){
 }
 
 $("chipProfile").onclick = ()=>showProfilePicker(false);
+$("chipVoice").onclick = ()=>showVoiceSettings();
+
+// ── shared API for games.js & cathome.js ───────────────────────────
+function learnedWords(){
+  // words she has met: daily challenges + completed word packs (at least the first 15)
+  const packDone = sectionUnits("words").filter(u=>(S.unitStars[u.id]||0)>0).length;
+  const n = Math.max(15, S.challengesDone*WORDS_PER_DAY, packDone*WORDS_PER_PACK);
+  return VOCAB.slice(0, Math.min(n, VOCAB.length));
+}
+function learnedKana(){
+  // characters from kana units with at least one star (recorded-audio chars only)
+  const chars = [];
+  KANA_UNITS.forEach(u=>{
+    if ((S.unitStars[u.id]||0) > 0) u.chars.forEach(c=>{ if (KANA_AUDIO[c[0]]) chars.push(c); });
+  });
+  if (chars.length < 10) KANA_UNITS.slice(0,2).forEach(u=>u.chars.forEach(c=>chars.push(c)));
+  return chars;
+}
+function addReward(fish, xp){
+  S.fish += fish; S.xp += xp; save(); renderStats();
+}
+function gamePlaysToday(game){
+  const k = todayKey();
+  if (!S.gamePlays[k]){ S.gamePlays = {}; S.gamePlays[k] = {}; } // keep only today
+  return S.gamePlays[k][game] || 0;
+}
+function recordGamePlay(game){
+  const k = todayKey();
+  if (!S.gamePlays[k]){ S.gamePlays = {}; S.gamePlays[k] = {}; }
+  S.gamePlays[k][game] = (S.gamePlays[k][game]||0) + 1;
+  save();
+}
+window.KK = {
+  state: ()=>S, save, show, toast, renderStats, renderHome,
+  speak, speakJa, sfxGood, sfxBad, sfxReward, sfxMeow, tone, confetti,
+  shuffle, pick, outfitsFor, catUnlocked,
+  learnedWords, learnedKana, addReward, gamePlaysToday, recordGamePlay,
+  checkUnlocks,
+};
 
 // ── boot ────────────────────────────────────────────────────────────
 if (REG.active && profile()){

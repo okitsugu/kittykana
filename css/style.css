@@ -258,6 +258,123 @@ h3 { font-size:22px; color:#7A5C4E; margin:22px 0 10px; }
 }
 .code-input { font-size:13px; font-weight:500; text-align:left; min-height:90px; word-break:break-all; }
 
+/* ── arrange (sentence builder) quiz ── */
+.arrange-answer {
+  min-height:64px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center;
+  background:#FFF9EF; border:3px dashed #F0CFA5; border-radius:18px; padding:12px; margin-bottom:16px;
+}
+.arrange-bank { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+.tile-btn {
+  background:#FFFDF9; border:3px solid #F5D9BC; border-radius:16px; padding:12px 18px;
+  font-size:24px; font-weight:800; color:#5A4A42; font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 0 #F0D0AE;
+}
+.tile-btn:active { transform:translateY(2px); box-shadow:0 1px 0 #F0D0AE; }
+.tile-btn.placed { background:#EAF4FF; border-color:#B8D8F5; box-shadow:0 4px 0 #B8D8F5; }
+.tile-btn.good { background:#DDF5DE; border-color:#8FD19A; box-shadow:0 4px 0 #8FD19A; }
+.tile-btn.bad { background:#FDE3E3; border-color:#F0A0A0; box-shadow:0 4px 0 #F0A0A0; }
+.tile-btn.small { font-size:20px; padding:10px 14px; }
+
+/* ── games ── */
+.game-hud { flex:1; display:flex; gap:14px; justify-content:flex-end; align-items:center;
+  font-size:20px; font-weight:800; color:#7A5C4E; }
+.game-stage { min-height:420px; position:relative; }
+.builder-word { font-size:40px; letter-spacing:4px; min-height:60px; font-weight:800; color:#5A4A42; }
+.builder-slots { display:flex; gap:8px; justify-content:center; margin:14px 0 20px; flex-wrap:wrap; }
+.builder-slot {
+  width:58px; height:58px; border-radius:14px; border:3px dashed #F0CFA5; background:#FFF9EF;
+  display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; color:#5A4A42;
+}
+.builder-slot.filled { border-style:solid; border-color:#B8D8F5; background:#EAF4FF; }
+
+.pop-arena { position:relative; height:440px; overflow:hidden; border-radius:22px;
+  background:linear-gradient(#DFF1FF, #F3FAFF 70%, #D9EFC9); border:3px solid #C9DEF5; }
+.pop-bubble {
+  position:absolute; bottom:-90px; width:74px; height:74px; border-radius:50%;
+  background:radial-gradient(circle at 32% 30%, #ffffffee, #BFE0FA 65%, #9CCBF0);
+  border:2.5px solid #8FB8E8; display:flex; align-items:center; justify-content:center;
+  font-size:32px; font-weight:800; color:#3D5A80; cursor:pointer;
+  animation:bubble-rise linear forwards;
+}
+@keyframes bubble-rise { to { transform:translateY(-560px); } }
+.pop-bubble.pop { animation:none; background:#FFE9A8; transition:transform .18s, opacity .18s; transform:scale(1.55); opacity:0; pointer-events:none; }
+.pop-target { font-size:26px; font-weight:800; color:#4A7AAD; text-align:center; margin-bottom:10px; }
+
+.memory-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; max-width:560px; margin:0 auto; }
+.mem-card { aspect-ratio:3/3.4; perspective:600px; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; }
+.mem-inner { position:relative; width:100%; height:100%; transition:transform .4s; transform-style:preserve-3d; }
+.mem-card.flip .mem-inner { transform:rotateY(180deg); }
+.mem-face { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:24px; font-weight:800; color:#5A4A42; border:3px solid #F5D9BC; }
+.mem-back { background:#FFD9E4; font-size:34px; }
+.mem-front { background:#FFFDF9; transform:rotateY(180deg); padding:4px; text-align:center; }
+.mem-front .sub { font-size:12.5px; color:#A88B76; font-weight:700; }
+.mem-card.matched .mem-front { background:#DDF5DE; border-color:#8FD19A; }
+
+.race-track { background:#EAF9EE; border:3px solid #BCE0C5; border-radius:20px; padding:14px 12px; margin-bottom:16px; }
+.race-lane { position:relative; height:64px; border-bottom:2px dashed #BCE0C5; }
+.race-lane:last-child { border-bottom:none; }
+.race-cat { position:absolute; left:0; bottom:0; transition:left .5s ease; }
+.race-flag { position:absolute; right:2px; top:6px; font-size:26px; }
+
+/* ── cat home ── */
+.cathome-scene {
+  position:relative; height:56vh; min-height:380px; max-height:560px; border-radius:26px;
+  overflow:hidden; border:4px solid #E8CBA8; box-shadow:0 6px 0 #DDBC96;
+}
+.ch-wall { position:absolute; inset:0 0 26% 0; background:#FCEBD4;
+  background-image:radial-gradient(#F5DDBC 12%, transparent 13%); background-size:44px 44px; }
+.cathome-scene.night .ch-wall { background:#4A4668; background-image:radial-gradient(#565278 12%, transparent 13%); background-size:44px 44px; }
+.ch-floor { position:absolute; left:0; right:0; bottom:0; height:26%;
+  background:repeating-linear-gradient(90deg, #E8C89E 0 70px, #E0BC8E 70px 140px); }
+.cathome-scene.night .ch-floor { background:repeating-linear-gradient(90deg, #8A7A62 0 70px, #7E6F58 70px 140px); }
+.ch-rug { position:absolute; left:50%; bottom:4%; transform:translateX(-50%);
+  width:44%; height:15%; border-radius:50%; background:#F5A8B8;
+  background:radial-gradient(ellipse at center, #F9C0CC 0 40%, #F5A8B8 41% 70%, #E88AA0 71%); opacity:.9; }
+.ch-window { position:absolute; top:7%; left:7%; width:24%; height:38%; border-radius:16px;
+  background:linear-gradient(#AEE0FF, #E4F5FF); border:6px solid #C9995E; overflow:hidden; }
+.ch-window::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:5px; background:#C9995E; transform:translateX(-50%); }
+.ch-window::after { content:"☀️"; position:absolute; font-size:34px; top:12%; right:12%; }
+.cathome-scene.night .ch-window { background:linear-gradient(#1E2448, #3A3E68); }
+.cathome-scene.night .ch-window::after { content:"🌙"; }
+.ch-star { position:absolute; color:#FFF3B8; font-size:11px; }
+.ch-tower { position:absolute; right:6%; bottom:24%; width:120px; height:210px; }
+.ch-tower-top { position:absolute; top:0; left:6px; width:108px; height:30px; background:#C9995E; border-radius:12px; box-shadow:0 3px 0 #B5864E; }
+.ch-tower-pole { position:absolute; top:30px; left:48px; width:24px; height:130px;
+  background:repeating-linear-gradient(180deg,#E8CBA8 0 12px,#DBB98E 12px 24px); }
+.ch-tower-base { position:absolute; bottom:0; left:0; width:120px; height:26px; background:#C9995E; border-radius:12px; box-shadow:0 3px 0 #B5864E; }
+.ch-shelf { position:absolute; top:12%; right:38%; width:15%; height:12px; background:#C9995E; border-radius:6px; }
+.ch-shelf::after { content:"📚 🐟 🏆"; position:absolute; top:-26px; left:8px; font-size:19px; }
+.ch-plant { position:absolute; bottom:24%; left:4%; font-size:52px; }
+.ch-toybox { position:absolute; bottom:5%; right:3%; font-size:44px; }
+.ch-yarn { position:absolute; bottom:8%; left:22%; font-size:26px; }
+.ch-bowl { position:absolute; bottom:6%; left:8%; font-size:34px; }
+.ch-cat { position:absolute; transition:left 2.8s ease-in-out, bottom 1.2s ease; cursor:pointer; }
+.ch-cat .catsvg { transition:transform .3s; }
+.ch-cat.walking .catsvg { animation:waddle .5s ease-in-out infinite; }
+.ch-cat.flipped .catsvg { transform:scaleX(-1); }
+.ch-cat.playing .catsvg { animation:wiggle .8s ease-in-out infinite; }
+.ch-bubble {
+  position:absolute; bottom:100%; left:50%; transform:translateX(-50%); margin-bottom:4px;
+  background:#fff; border:2.5px solid #F5D9BC; border-radius:14px; padding:7px 12px;
+  font-size:16px; font-weight:800; color:#5A4A42; white-space:nowrap; z-index:5; pointer-events:none;
+  animation:pop-in .25s ease;
+}
+.ch-bubble .sub { display:block; font-size:11.5px; color:#A88B76; text-align:center; }
+.cathome-bar { display:flex; align-items:center; gap:16px; margin-top:14px; flex-wrap:wrap; }
+.cathome-hint { color:#A88B76; font-weight:700; }
+.treat-fly { position:absolute; font-size:26px; z-index:6; transition:left 1s ease, bottom 1s ease; pointer-events:none; }
+
+/* ── voice settings ── */
+.voice-row {
+  display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  background:#FFFDF9; border:3px solid #F5D9BC; border-radius:16px; padding:12px 16px;
+  font-family:inherit; font-size:17px; font-weight:700; color:#5A4A42; cursor:pointer; margin-bottom:10px;
+}
+.voice-row.selected { border-color:#F286A4; background:#FFF0F4; }
+.voice-row .tag { margin-left:auto; font-size:13px; color:#A88B76; }
+
 @media (max-width:640px){
   #appTitle .tj { display:none; }
   .quiz-big { font-size:56px; }

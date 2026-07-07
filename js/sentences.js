@@ -1,0 +1,88 @@
+// Sentence-pattern course for KittyKana
+// unit: {id, title, jp (pattern), sents:[{c:[chunks in order], r:romaji, en, e:emoji}]}
+window.SENTENCES = [
+  { id:"s1", title:"This is a ...", jp:"これは 〜 です", sents:[
+    {c:["これは","ねこ","です"], r:"kore wa neko desu", en:"This is a cat", e:"🐱"},
+    {c:["これは","りんご","です"], r:"kore wa ringo desu", en:"This is an apple", e:"🍎"},
+    {c:["これは","ほん","です"], r:"kore wa hon desu", en:"This is a book", e:"📖"},
+    {c:["これは","はな","です"], r:"kore wa hana desu", en:"This is a flower", e:"🌸"},
+    {c:["これは","たまご","です"], r:"kore wa tamago desu", en:"This is an egg", e:"🥚"},
+  ]},
+  { id:"s2", title:"I like ...", jp:"〜が すきです", sents:[
+    {c:["わたしは","ねこが","すきです"], r:"watashi wa neko ga suki desu", en:"I like cats", e:"😻"},
+    {c:["わたしは","いちごが","すきです"], r:"watashi wa ichigo ga suki desu", en:"I like strawberries", e:"🍓"},
+    {c:["わたしは","あおが","すきです"], r:"watashi wa ao ga suki desu", en:"I like blue", e:"💙"},
+    {c:["わたしは","おんがくが","すきです"], r:"watashi wa ongaku ga suki desu", en:"I like music", e:"🎵"},
+    {c:["わたしは","ぱんだが","すきです"], r:"watashi wa panda ga suki desu", en:"I like pandas", e:"🐼"},
+  ]},
+  { id:"s3", title:"Please give me ...", jp:"〜を ください", sents:[
+    {c:["みずを","ください"], r:"mizu wo kudasai", en:"Water, please", e:"💧"},
+    {c:["りんごを","ください"], r:"ringo wo kudasai", en:"An apple, please", e:"🍎"},
+    {c:["おかしを","ください"], r:"okashi wo kudasai", en:"Sweets, please", e:"🍬"},
+    {c:["ごはんを","ください"], r:"gohan wo kudasai", en:"Rice, please", e:"🍚"},
+    {c:["おちゃを","ください"], r:"ocha wo kudasai", en:"Tea, please", e:"🍵"},
+  ]},
+  { id:"s4", title:"Where is ...?", jp:"〜は どこですか", sents:[
+    {c:["ねこは","どこ","ですか"], r:"neko wa doko desu ka", en:"Where is the cat?", e:"🐱"},
+    {c:["ほんは","どこ","ですか"], r:"hon wa doko desu ka", en:"Where is the book?", e:"📖"},
+    {c:["えきは","どこ","ですか"], r:"eki wa doko desu ka", en:"Where is the station?", e:"🚉"},
+    {c:["がっこうは","どこ","ですか"], r:"gakkou wa doko desu ka", en:"Where is the school?", e:"🏫"},
+    {c:["おかあさんは","どこ","ですか"], r:"okaasan wa doko desu ka", en:"Where is mom?", e:"👩"},
+  ]},
+  { id:"s5", title:"There is ...", jp:"〜が います", sents:[
+    {c:["にわに","ねこが","います"], r:"niwa ni neko ga imasu", en:"There's a cat in the garden", e:"🐱"},
+    {c:["そらに","とりが","います"], r:"sora ni tori ga imasu", en:"There's a bird in the sky", e:"🐦"},
+    {c:["うみに","さかなが","います"], r:"umi ni sakana ga imasu", en:"There are fish in the sea", e:"🐟"},
+    {c:["きに","りすが","います"], r:"ki ni risu ga imasu", en:"There's a squirrel in the tree", e:"🐿️"},
+    {c:["いえに","いぬが","います"], r:"ie ni inu ga imasu", en:"There's a dog in the house", e:"🐶"},
+  ]},
+  { id:"s6", title:"I am ... years old", jp:"〜さい です", sents:[
+    {c:["わたしは","はっさい","です"], r:"watashi wa hassai desu", en:"I am 8 years old", e:"🎂"},
+    {c:["わたしは","きゅうさい","です"], r:"watashi wa kyuusai desu", en:"I am 9 years old", e:"🎂"},
+    {c:["いもうとは","ろくさい","です"], r:"imouto wa rokusai desu", en:"My little sister is 6", e:"👧"},
+    {c:["ねこは","にさい","です"], r:"neko wa nisai desu", en:"The cat is 2 years old", e:"🐱"},
+    {c:["なんさい","ですか"], r:"nansai desu ka", en:"How old are you?", e:"❓"},
+  ]},
+  { id:"s7", title:"Today is ...", jp:"きょうは 〜 です", sents:[
+    {c:["きょうは","はれ","です"], r:"kyou wa hare desu", en:"Today is sunny", e:"☀️"},
+    {c:["きょうは","あめ","です"], r:"kyou wa ame desu", en:"Today is rainy", e:"🌧️"},
+    {c:["きょうは","ゆき","です"], r:"kyou wa yuki desu", en:"Today is snowy", e:"❄️"},
+    {c:["きょうは","げつようび","です"], r:"kyou wa getsuyoubi desu", en:"Today is Monday", e:"📅"},
+    {c:["きょうは","たんじょうび","です"], r:"kyou wa tanjoubi desu", en:"Today is my birthday", e:"🎉"},
+  ]},
+  { id:"s8", title:"I go to ...", jp:"〜に いきます", sents:[
+    {c:["がっこうに","いきます"], r:"gakkou ni ikimasu", en:"I go to school", e:"🏫"},
+    {c:["こうえんに","いきます"], r:"kouen ni ikimasu", en:"I go to the park", e:"🛝"},
+    {c:["うみに","いきます"], r:"umi ni ikimasu", en:"I go to the sea", e:"🌊"},
+    {c:["としょかんに","いきます"], r:"toshokan ni ikimasu", en:"I go to the library", e:"📚"},
+    {c:["おみせに","いきます"], r:"omise ni ikimasu", en:"I go to the shop", e:"🛍️"},
+  ]},
+  { id:"s9", title:"I eat / I drink", jp:"たべます・のみます", sents:[
+    {c:["ごはんを","たべます"], r:"gohan wo tabemasu", en:"I eat rice", e:"🍚"},
+    {c:["りんごを","たべます"], r:"ringo wo tabemasu", en:"I eat an apple", e:"🍎"},
+    {c:["おにぎりを","たべます"], r:"onigiri wo tabemasu", en:"I eat a rice ball", e:"🍙"},
+    {c:["みずを","のみます"], r:"mizu wo nomimasu", en:"I drink water", e:"💧"},
+    {c:["ぎゅうにゅうを","のみます"], r:"gyuunyuu wo nomimasu", en:"I drink milk", e:"🥛"},
+  ]},
+  { id:"s10", title:"Colors!", jp:"〜is 〜color", sents:[
+    {c:["そらは","あおい","です"], r:"sora wa aoi desu", en:"The sky is blue", e:"🌤️"},
+    {c:["いちごは","あかい","です"], r:"ichigo wa akai desu", en:"Strawberries are red", e:"🍓"},
+    {c:["ひまわりは","きいろい","です"], r:"himawari wa kiiroi desu", en:"Sunflowers are yellow", e:"🌻"},
+    {c:["くもは","しろい","です"], r:"kumo wa shiroi desu", en:"Clouds are white", e:"☁️"},
+    {c:["よるは","くらい","です"], r:"yoru wa kurai desu", en:"The night is dark", e:"🌃"},
+  ]},
+  { id:"s11", title:"What time is it?", jp:"なんじ ですか", sents:[
+    {c:["いま","なんじ","ですか"], r:"ima nanji desu ka", en:"What time is it now?", e:"🕐"},
+    {c:["いま","さんじ","です"], r:"ima sanji desu", en:"It's 3 o'clock", e:"🕒"},
+    {c:["いま","ごじ","です"], r:"ima goji desu", en:"It's 5 o'clock", e:"🕔"},
+    {c:["あさ","しちじに","おきます"], r:"asa shichiji ni okimasu", en:"I wake up at 7", e:"🌅"},
+    {c:["よる","くじに","ねます"], r:"yoru kuji ni nemasu", en:"I sleep at 9 at night", e:"🌙"},
+  ]},
+  { id:"s12", title:"Let's play!", jp:"いっしょに 〜", sents:[
+    {c:["いっしょに","あそぼう"], r:"issho ni asobou", en:"Let's play together!", e:"🎮"},
+    {c:["いっしょに","うたおう"], r:"issho ni utaou", en:"Let's sing together!", e:"🎤"},
+    {c:["ねこと","あそびます"], r:"neko to asobimasu", en:"I play with the cat", e:"🐱"},
+    {c:["いぬと","さんぽします"], r:"inu to sanpo shimasu", en:"I walk with the dog", e:"🐕"},
+    {c:["ともだちと","おどります"], r:"tomodachi to odorimasu", en:"I dance with my friends", e:"💃"},
+  ]},
+];
